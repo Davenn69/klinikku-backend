@@ -8,5 +8,17 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.2",
+    "drizzle-kit": "^0.31.10",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^6.0.2"
+  }
 }
