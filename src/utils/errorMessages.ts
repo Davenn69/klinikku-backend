@@ -9,6 +9,9 @@ class ErrorMessages {
   failedRegisterUser: string = "Failed to create user.";
   invalidLoginCredentials: string = "Invalid email or password.";
   accountInactive: string = "This account is inactive.";
+
+  //Token related
+  tokenMissing: string = "token is not provided";
 }
 
 export const errors = new ErrorMessages();
