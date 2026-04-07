@@ -21,6 +21,13 @@ class ErrorMessages {
   //Appointment related
   missingDoctorId: string = "doctor_id is required.";
   missingAppointmentDate: string = "date is required.";
+
+  //Encounters related
+  missingAppointmentId: string = "appointment_slot_id is required";
+  missingComplaint: string = "complaint is required";
+  missingEncounterId: string = "encounter id is required";
+  encounterNotFound: string = "encounter not found";
+  encounterAlreadyCancelled: string = "encounter is already cancelled";
 }
 
 export const errors = new ErrorMessages();
