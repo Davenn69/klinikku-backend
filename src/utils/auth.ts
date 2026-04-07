@@ -20,6 +20,7 @@ type AccessTokenPayload = {
 const PASSWORD_KEY_LENGTH = 64;
 const PASSWORD_SCRYPT_COST = 16384;
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24;
+const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 const encodeBase64Url = (value: string | Buffer) =>
   Buffer.from(value)
@@ -110,6 +111,24 @@ export const signAccessToken = (payload: JwtPayload) => {
     .digest();
 
   return `${unsignedToken}.${encodeBase64Url(signature)}`;
+};
+
+export const generateRefreshToken = () => encodeBase64Url(crypto.randomBytes(48));
+
+export const getRefreshTokenExpiryDate = () =>
+  new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
+
+export const hashRefreshToken = (token: string) => {
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    throw new CustomError("JWT_SECRET is not configured.", 500);
+  }
+
+  return crypto
+    .createHmac("sha256", jwtSecret)
+    .update(token)
+    .digest("hex");
 };
 
 export const decodeJwtPayload = (token: string) => {
