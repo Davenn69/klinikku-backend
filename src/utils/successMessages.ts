@@ -1,6 +1,7 @@
 class SuccessMessages {
   successRegister: string = "User registered successfully.";
   successLogin: string = "Login successful.";
+  successRefreshSession: string = "Session refreshed successfully.";
   successRetrieveRegions = "Success get regions";
   successRetrieveDoctors = "Success get doctors";
   successRetrieveAppointmentSlots = "Success get appointment slots";

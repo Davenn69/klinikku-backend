@@ -12,6 +12,7 @@ class ErrorMessages {
 
   //Token related
   tokenMissing: string = "token is not provided";
+  refreshTokenMissing: string = "refresh token is not provided";
   invalidToken: string = "token is invalid";
   tokenExpired: string = "token has expired";
 
