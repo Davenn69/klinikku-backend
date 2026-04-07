@@ -1,10 +1,20 @@
 import crypto from "crypto";
 import CustomError from "../types/error";
+import { HttpStatusCode } from "../types/httpStatusCode";
+import { errors } from "./errorMessages";
 
 type JwtPayload = {
   sub: string;
   email: string;
   role: string;
+};
+
+type AccessTokenPayload = {
+  sub: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
 };
 
 const PASSWORD_KEY_LENGTH = 64;
@@ -116,3 +126,48 @@ export const decodeJwtPayload = (token: string) => {
   }
 };
 
+export const verifyAccessToken = (token: string): AccessTokenPayload => {
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    throw new CustomError("JWT_SECRET is not configured.", 500);
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
+  }
+
+  const [encodedHeader, encodedPayload, encodedSignature] = parts;
+  if (!encodedHeader || !encodedPayload || !encodedSignature) {
+    throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
+  }
+
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", jwtSecret)
+    .update(unsignedToken)
+    .digest();
+
+  const receivedSignature = decodeBase64Url(encodedSignature);
+
+  if (receivedSignature.length !== expectedSignature.length) {
+    throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
+  }
+
+  if (!crypto.timingSafeEqual(receivedSignature, expectedSignature)) {
+    throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
+  }
+
+  const payload = JSON.parse(
+    decodeBase64Url(encodedPayload).toString("utf8"),
+  ) as AccessTokenPayload;
+
+  if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
+    throw new CustomError(errors.tokenExpired, HttpStatusCode.UNAUTHORIZED);
+  }
+
+  return payload;
+};
+
+export type { AccessTokenPayload };
