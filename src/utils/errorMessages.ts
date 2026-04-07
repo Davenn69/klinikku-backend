@@ -12,6 +12,8 @@ class ErrorMessages {
 
   //Token related
   tokenMissing: string = "token is not provided";
+  invalidToken: string = "token is invalid";
+  tokenExpired: string = "token has expired";
 }
 
 export const errors = new ErrorMessages();
