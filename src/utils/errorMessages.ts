@@ -14,6 +14,9 @@ class ErrorMessages {
   tokenMissing: string = "token is not provided";
   invalidToken: string = "token is invalid";
   tokenExpired: string = "token has expired";
+
+  //Doctor related
+  missingRegionId: string = "region_id is required.";
 }
 
 export const errors = new ErrorMessages();
