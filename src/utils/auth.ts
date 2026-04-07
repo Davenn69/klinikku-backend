@@ -1,0 +1,118 @@
+import crypto from "crypto";
+import CustomError from "../types/error";
+
+type JwtPayload = {
+  sub: string;
+  email: string;
+  role: string;
+};
+
+const PASSWORD_KEY_LENGTH = 64;
+const PASSWORD_SCRYPT_COST = 16384;
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24;
+
+const encodeBase64Url = (value: string | Buffer) =>
+  Buffer.from(value)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+
+const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(
+    normalized.length + ((4 - (normalized.length % 4)) % 4),
+    "=",
+  );
+
+  return Buffer.from(padded, "base64");
+};
+
+const scryptAsync = (password: string, salt: string) =>
+  new Promise<Buffer>((resolve, reject) => {
+    crypto.scrypt(
+      password,
+      salt,
+      PASSWORD_KEY_LENGTH,
+      { N: PASSWORD_SCRYPT_COST },
+      (error, derivedKey) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(derivedKey as Buffer);
+      },
+    );
+  });
+
+export const hashPassword = async (password: string) => {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = await scryptAsync(password, salt);
+
+  return `${salt}:${derivedKey.toString("hex")}`;
+};
+
+export const verifyPassword = async (
+  password: string,
+  storedPasswordHash: string,
+) => {
+  const [salt, savedHash] = storedPasswordHash.split(":");
+
+  if (!salt || !savedHash) {
+    return false;
+  }
+
+  const derivedKey = await scryptAsync(password, salt);
+  const savedHashBuffer = Buffer.from(savedHash, "hex");
+
+  if (savedHashBuffer.length !== derivedKey.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(savedHashBuffer, derivedKey);
+};
+
+export const signAccessToken = (payload: JwtPayload) => {
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!jwtSecret) {
+    throw new CustomError("JWT_SECRET is not configured.", 500);
+  }
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const header = {
+    alg: "HS256",
+    typ: "JWT",
+  };
+  const body = {
+    ...payload,
+    iat: nowInSeconds,
+    exp: nowInSeconds + ACCESS_TOKEN_TTL_SECONDS,
+  };
+
+  const encodedHeader = encodeBase64Url(JSON.stringify(header));
+  const encodedBody = encodeBase64Url(JSON.stringify(body));
+  const unsignedToken = `${encodedHeader}.${encodedBody}`;
+  const signature = crypto
+    .createHmac("sha256", jwtSecret)
+    .update(unsignedToken)
+    .digest();
+
+  return `${unsignedToken}.${encodeBase64Url(signature)}`;
+};
+
+export const decodeJwtPayload = (token: string) => {
+  const [, payload] = token.split(".");
+
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(decodeBase64Url(payload).toString("utf8"));
+  } catch {
+    return null;
+  }
+};
+
