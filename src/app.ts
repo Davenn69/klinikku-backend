@@ -1,5 +1,6 @@
 import express from "express";
 import authRoutes from "./routes/authRoutes";
+import appointmentRoutes from "./routes/appointmentRoutes";
 import doctorRoutes from "./routes/doctorRoutes";
 import regionRoutes from "./routes/regionRoutes";
 import CustomError from "./types/error";
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/auth", authRoutes);
 app.use("/regions", protect, regionRoutes);
 app.use("/doctors", protect, doctorRoutes);
+app.use("/appointment-slots", protect, appointmentRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

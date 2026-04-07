@@ -17,6 +17,10 @@ class ErrorMessages {
 
   //Doctor related
   missingRegionId: string = "region_id is required.";
+
+  //Appointment related
+  missingDoctorId: string = "doctor_id is required.";
+  missingAppointmentDate: string = "date is required.";
 }
 
 export const errors = new ErrorMessages();
