@@ -11,6 +11,42 @@ import {
 import { hashPassword } from "../utils/auth";
 
 const DEFAULT_PASSWORD = "password123";
+const SEED_TIME_ZONE = "Asia/Bangkok";
+
+const formatDateInTimeZone = (date: Date) =>
+  (() => {
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: SEED_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const parts = formatter.formatToParts(date);
+    const year = parts.find((part) => part.type === "year")?.value;
+    const month = parts.find((part) => part.type === "month")?.value;
+    const day = parts.find((part) => part.type === "day")?.value;
+
+    if (!year || !month || !day) {
+      throw new Error("Failed to format seed date in target time zone");
+    }
+
+    return `${year}-${month}-${day}`;
+  })();
+
+const addDaysToDateString = (dateString: string, days: number) => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error(`Invalid seed date value: ${dateString}`);
+  }
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return shifted.toISOString().slice(0, 10);
+};
+
+const todayDate = formatDateInTimeZone(new Date());
+const todayDateCompact = todayDate.replaceAll("-", "");
+const seedDates = Array.from({ length: 8 }, (_, offset) =>
+  addDaysToDateString(todayDate, offset),
+);
 
 const regionSeeds = [
   { id: "a1000000-0000-0000-0000-000000000001", name: "Surabaya", code: "reg_sby" },
@@ -106,12 +142,10 @@ const doctorSeeds = [
   },
 ] as const;
 
-const appointmentSlotSeeds = [
+const appointmentSlotTemplates = [
   {
-    id: "d1000000-0000-0000-0000-000000000001",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "08:00",
     endTime: "08:30",
     isAvailable: true,
@@ -119,10 +153,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000002",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "08:30",
     endTime: "09:00",
     isAvailable: true,
@@ -130,10 +162,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000003",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "09:00",
     endTime: "09:30",
     isAvailable: true,
@@ -141,10 +171,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000004",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "09:30",
     endTime: "10:00",
     isAvailable: true,
@@ -152,10 +180,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000005",
     doctorId: "c1000000-0000-0000-0000-000000000002",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "10:00",
     endTime: "10:30",
     isAvailable: true,
@@ -163,10 +189,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000006",
     doctorId: "c1000000-0000-0000-0000-000000000002",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "10:30",
     endTime: "11:00",
     isAvailable: true,
@@ -174,10 +198,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000007",
     doctorId: "c1000000-0000-0000-0000-000000000004",
     regionId: "a1000000-0000-0000-0000-000000000002",
-    slotDate: "2026-04-07",
     startTime: "13:00",
     endTime: "13:30",
     isAvailable: true,
@@ -185,10 +207,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000008",
     doctorId: "c1000000-0000-0000-0000-000000000004",
     regionId: "a1000000-0000-0000-0000-000000000002",
-    slotDate: "2026-04-07",
     startTime: "13:30",
     endTime: "14:00",
     isAvailable: true,
@@ -196,10 +216,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000009",
     doctorId: "c1000000-0000-0000-0000-000000000006",
     regionId: "a1000000-0000-0000-0000-000000000003",
-    slotDate: "2026-04-07",
     startTime: "09:00",
     endTime: "09:30",
     isAvailable: true,
@@ -207,10 +225,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000010",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-08",
     startTime: "08:00",
     endTime: "08:30",
     isAvailable: true,
@@ -218,10 +234,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000011",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-08",
     startTime: "08:30",
     endTime: "09:00",
     isAvailable: true,
@@ -229,10 +243,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000012",
     doctorId: "c1000000-0000-0000-0000-000000000005",
     regionId: "a1000000-0000-0000-0000-000000000002",
-    slotDate: "2026-04-08",
     startTime: "14:00",
     endTime: "14:30",
     isAvailable: true,
@@ -240,10 +252,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000013",
     doctorId: "c1000000-0000-0000-0000-000000000005",
     regionId: "a1000000-0000-0000-0000-000000000002",
-    slotDate: "2026-04-08",
     startTime: "14:30",
     endTime: "15:00",
     isAvailable: true,
@@ -251,10 +261,8 @@ const appointmentSlotSeeds = [
     bookedCount: 0,
   },
   {
-    id: "d1000000-0000-0000-0000-000000000014",
     doctorId: "c1000000-0000-0000-0000-000000000002",
     regionId: "a1000000-0000-0000-0000-000000000001",
-    slotDate: "2026-04-07",
     startTime: "11:00",
     endTime: "11:30",
     isAvailable: true,
@@ -263,10 +271,22 @@ const appointmentSlotSeeds = [
   },
 ] as const;
 
+const appointmentSlotSeeds = seedDates.flatMap((slotDate, dayOffset) =>
+  appointmentSlotTemplates.map((template, index) => {
+    const slotNumber = dayOffset * appointmentSlotTemplates.length + index + 1;
+
+    return {
+      id: `d1000000-0000-0000-0000-${String(slotNumber).padStart(12, "0")}`,
+      ...template,
+      slotDate,
+    };
+  }),
+);
+
 const encounterSeeds = [
   {
     id: "e1000000-0000-0000-0000-000000000001",
-    bookingCode: "BKG-20260407-001",
+    bookingCode: `BKG-${todayDateCompact}-001`,
     userId: "b1000000-0000-0000-0000-000000000002",
     doctorId: "c1000000-0000-0000-0000-000000000002",
     regionId: "a1000000-0000-0000-0000-000000000001",
@@ -276,7 +296,7 @@ const encounterSeeds = [
   },
   {
     id: "e1000000-0000-0000-0000-000000000002",
-    bookingCode: "BKG-20260407-002",
+    bookingCode: `BKG-${todayDateCompact}-002`,
     userId: "b1000000-0000-0000-0000-000000000003",
     doctorId: "c1000000-0000-0000-0000-000000000004",
     regionId: "a1000000-0000-0000-0000-000000000002",
@@ -286,7 +306,7 @@ const encounterSeeds = [
   },
   {
     id: "e1000000-0000-0000-0000-000000000003",
-    bookingCode: "BKG-20260301-001",
+    bookingCode: `BKG-${todayDateCompact}-003`,
     userId: "b1000000-0000-0000-0000-000000000002",
     doctorId: "c1000000-0000-0000-0000-000000000001",
     regionId: "a1000000-0000-0000-0000-000000000001",
@@ -296,7 +316,7 @@ const encounterSeeds = [
   },
   {
     id: "e1000000-0000-0000-0000-000000000004",
-    bookingCode: "BKG-20260320-001",
+    bookingCode: `BKG-${todayDateCompact}-004`,
     userId: "b1000000-0000-0000-0000-000000000002",
     doctorId: "c1000000-0000-0000-0000-000000000006",
     regionId: "a1000000-0000-0000-0000-000000000003",
@@ -397,7 +417,24 @@ const ensureEncounter = async (seed: (typeof encounterSeeds)[number]) => {
     where: eq(encounters.id, seed.id),
   });
 
-  if (existing) return existing;
+  if (existing) {
+    const [updated] = await db
+      .update(encounters)
+      .set({
+        bookingCode: seed.bookingCode,
+        userId: seed.userId,
+        doctorId: seed.doctorId,
+        regionId: seed.regionId,
+        appointmentSlotId: seed.appointmentSlotId,
+        complaint: seed.complaint,
+        status: seed.status,
+      })
+      .where(eq(encounters.id, seed.id))
+      .returning();
+
+    if (!updated) throw new Error(`Failed to refresh encounter ${seed.id}`);
+    return updated;
+  }
 
   const [created] = await db.insert(encounters).values(seed).returning();
   if (!created) throw new Error(`Failed to seed encounter ${seed.id}`);
@@ -424,7 +461,7 @@ const syncAppointmentSlotAvailability = async () => {
 };
 
 const seed = async () => {
-  console.log("Seeding database from drizzle/0002_seed_data.sql...");
+  console.log("Seeding database from src/db/seed.ts...");
 
   const passwordHash = await hashPassword(DEFAULT_PASSWORD);
 
@@ -452,7 +489,7 @@ const seed = async () => {
 
   console.log("Seed completed successfully.");
   console.log({
-    source: "drizzle/0002_seed_data.sql",
+    source: "src/db/seed.ts",
     defaultPassword: DEFAULT_PASSWORD,
     note: "Password hash was regenerated with the app's scrypt auth helper.",
   });
