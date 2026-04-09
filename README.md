@@ -46,6 +46,24 @@ Beberapa route dilindungi middleware `protect`, jadi hanya user yang sudah login
 - Drizzle ORM
 - dotenv
 
+## Database
+
+Project ini menggunakan **PostgreSQL**, jadi jenis databasenya adalah **SQL**.
+
+Alasan pemilihannya:
+
+- Data pada project ini saling berelasi, misalnya `users`, `doctors`, `regions`, `appointment_slots`, dan `encounters`.
+- Relasi antar tabel lebih mudah dijaga dengan foreign key, constraint, dan migration yang terstruktur.
+- PostgreSQL cocok untuk data yang butuh konsistensi tinggi, seperti jadwal booking dan status encounter.
+- Query SQL sangat pas untuk kebutuhan filtering, join, agregasi, dan reporting dashboard.
+- Dengan schema yang jelas, validasi struktur data jadi lebih kuat dan lebih aman untuk aplikasi klinik.
+
+Kalau dibandingkan dengan NoSQL:
+
+- NoSQL lebih fleksibel untuk data yang bentuknya sangat bebas atau berubah-ubah.
+- Namun, untuk project ini, struktur datanya cukup jelas dan saling terhubung, jadi pendekatan SQL lebih tepat.
+- Karena itu PostgreSQL dipilih agar integritas data lebih terjaga dan query relasional lebih mudah dikelola.
+
 ## Endpoint Utama
 
 - `POST /auth/register`
