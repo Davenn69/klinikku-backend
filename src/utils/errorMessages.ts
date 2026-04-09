@@ -29,6 +29,10 @@ class ErrorMessages {
   missingEncounterId: string = "encounter id is required";
   encounterNotFound: string = "encounter not found";
   encounterAlreadyCancelled: string = "encounter is already cancelled";
+  appointmentSlotUnavailable: string =
+    "appointment slot is unavailable or fully booked";
+  encounterAlreadyBooked: string =
+    "encounter already exists for this user and appointment slot";
 }
 
 export const errors = new ErrorMessages();

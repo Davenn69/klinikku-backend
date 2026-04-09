@@ -123,25 +123,68 @@ export const addEncounters = async (
       );
     }
 
-    const [encounter] = await db
-      .insert(encounters)
-      .values({
-        bookingCode: generateBookingCode(),
-        userId: user.sub,
-        doctorId: doctorId.trim(),
-        regionId: regionId.trim(),
-        appointmentSlotId: appointmentSlotId.trim(),
-        complaint: complaint.trim(),
-      })
-      .returning();
+    const trimmedDoctorId = doctorId.trim();
+    const trimmedRegionId = regionId.trim();
+    const trimmedAppointmentSlotId = appointmentSlotId.trim();
+    const trimmedComplaint = complaint.trim();
 
-    //Add appointment minus
+    const encounter = await db.transaction(async (tx) => {
+      const existingEncounter = await tx.query.encounters.findFirst({
+        where: and(
+          eq(encounters.userId, user.sub),
+          eq(encounters.appointmentSlotId, trimmedAppointmentSlotId),
+        ),
+      });
+
+      if (existingEncounter && existingEncounter.status !== "CANCELLED") {
+        throw new CustomError(
+          errors.encounterAlreadyBooked,
+          HttpStatusCode.CONFLICT,
+        );
+      }
+
+      const slot = await tx.query.appointmentSlots.findFirst({
+        columns: {
+          id: true,
+          bookedCount: true,
+          maxCapacity: true,
+          isAvailable: true,
+        },
+        where: and(
+          eq(appointmentSlots.id, trimmedAppointmentSlotId),
+          eq(appointmentSlots.doctorId, trimmedDoctorId),
+          eq(appointmentSlots.regionId, trimmedRegionId),
+        ),
+      });
+
+      if (!slot || !slot.isAvailable || slot.bookedCount >= slot.maxCapacity) {
+        throw new CustomError(
+          errors.appointmentSlotUnavailable,
+          HttpStatusCode.CONFLICT,
+        );
+      }
+
+      const [createdEncounter] = await tx
+        .insert(encounters)
+        .values({
+          bookingCode: generateBookingCode(),
+          userId: user.sub,
+          doctorId: trimmedDoctorId,
+          regionId: trimmedRegionId,
+          appointmentSlotId: trimmedAppointmentSlotId,
+          complaint: trimmedComplaint,
+        })
+        .returning();
+
+      return createdEncounter;
+    });
 
     res.status(HttpStatusCode.CREATED).json({
       message: success.successCreateEncounter,
       encounter,
     });
   } catch (e: any) {
+    console.log("error ", e.cause);
     next(e);
   }
 };
