@@ -45,16 +45,23 @@ export const getEncounters = async (
           maxCapacity: appointmentSlots.maxCapacity,
           bookedCount: appointmentSlots.bookedCount,
           isAvailable: appointmentSlots.isAvailable,
+          remainingCapacity: sql<number>`${appointmentSlots.maxCapacity} - ${appointmentSlots.bookedCount}`,
+          doctorId: appointmentSlots.doctorId,
+          regionId: appointmentSlots.regionId,
         },
         doctor: {
           id: doctors.id,
           name: doctors.name,
           specialization: doctors.specialization,
+          regionId: doctors.regionId,
+          licenseNumber: doctors.licenseNumber,
+          isActive: doctors.isActive,
         },
         region: {
           id: regions.id,
           name: regions.name,
           code: regions.code,
+          isActive: regions.isActive,
         },
       })
       .from(encounters)
@@ -154,8 +161,6 @@ export const getEncounterDetails = async (
         bookingCode: encounters.bookingCode,
         complaint: encounters.complaint,
         status: encounters.status,
-        cancelledReason: encounters.cancelledReason,
-        cancelledAt: encounters.cancelledAt,
         createdAt: encounters.createdAt,
         updatedAt: encounters.updatedAt,
         appointment: {
@@ -166,16 +171,23 @@ export const getEncounterDetails = async (
           maxCapacity: appointmentSlots.maxCapacity,
           bookedCount: appointmentSlots.bookedCount,
           isAvailable: appointmentSlots.isAvailable,
+          remainingCapacity: sql<number>`${appointmentSlots.maxCapacity} - ${appointmentSlots.bookedCount}`,
+          doctorId: appointmentSlots.doctorId,
+          regionId: appointmentSlots.regionId,
         },
         doctor: {
           id: doctors.id,
           name: doctors.name,
           specialization: doctors.specialization,
+          regionId: doctors.regionId,
+          licenseNumber: doctors.licenseNumber,
+          isActive: doctors.isActive,
         },
         region: {
           id: regions.id,
           name: regions.name,
           code: regions.code,
+          isActive: regions.isActive,
         },
       })
       .from(encounters)
@@ -186,10 +198,7 @@ export const getEncounterDetails = async (
         eq(encounters.appointmentSlotId, appointmentSlots.id),
       )
       .where(
-        and(
-          eq(encounters.id, encounterId),
-          eq(encounters.userId, user.sub),
-        ),
+        and(eq(encounters.id, encounterId), eq(encounters.userId, user.sub)),
       )
       .limit(1);
 
