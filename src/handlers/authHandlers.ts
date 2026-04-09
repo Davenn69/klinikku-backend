@@ -67,7 +67,10 @@ export const register = async (
     }
 
     if (name.trim().length < 2) {
-      throw new CustomError(errors.invalidNameLength, HttpStatusCode.BAD_REQUEST);
+      throw new CustomError(
+        errors.invalidNameLength,
+        HttpStatusCode.BAD_REQUEST,
+      );
     }
 
     if (password.length < 6) {
@@ -155,20 +158,6 @@ export const login = async (
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-
-    if (!emailRegex.test(normalizedEmail)) {
-      throw new CustomError(
-        errors.invalidEmailFormat,
-        HttpStatusCode.BAD_REQUEST,
-      );
-    }
-
-    if (!passwordRegex.test(password)) {
-      throw new CustomError(
-        errors.invalidPasswordFormat,
-        HttpStatusCode.BAD_REQUEST,
-      );
-    }
 
     const user = await db.query.users.findFirst({
       where: eq(users.email, normalizedEmail),
