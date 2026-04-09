@@ -15,6 +15,10 @@ import { errors } from "../utils/errorMessages";
 import { HttpStatusCode } from "../types/httpStatusCode";
 import { success } from "../utils/successMessages";
 
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+const emailRegex = /^[\w-\.]+@[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+$/;
+const nameRegex = /^[A-Za-z\s]+$/;
+
 const getSafeUser = (user: typeof users.$inferSelect) => ({
   id: user.id,
   name: user.name,
@@ -62,11 +66,38 @@ export const register = async (
       );
     }
 
-    if (password.length < 8) {
+    if (name.trim().length < 2) {
+      throw new CustomError(errors.invalidNameLength, HttpStatusCode.BAD_REQUEST);
+    }
+
+    if (password.length < 6) {
       throw new CustomError(errors.passwordLength, HttpStatusCode.BAD_REQUEST);
     }
 
+    const trimmedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (!nameRegex.test(trimmedName)) {
+      throw new CustomError(
+        errors.invalidNameFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (!emailRegex.test(normalizedEmail)) {
+      throw new CustomError(
+        errors.invalidEmailFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (!passwordRegex.test(password)) {
+      throw new CustomError(
+        errors.invalidPasswordFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, normalizedEmail),
     });
@@ -78,7 +109,7 @@ export const register = async (
     const [newUser] = await db
       .insert(users)
       .values({
-        name: name.trim(),
+        name: trimmedName,
         email: normalizedEmail,
         passwordHash: await hashPassword(password),
         role: role ?? "patient",
@@ -124,6 +155,21 @@ export const login = async (
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (!emailRegex.test(normalizedEmail)) {
+      throw new CustomError(
+        errors.invalidEmailFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (!passwordRegex.test(password)) {
+      throw new CustomError(
+        errors.invalidPasswordFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
     const user = await db.query.users.findFirst({
       where: eq(users.email, normalizedEmail),
     });
