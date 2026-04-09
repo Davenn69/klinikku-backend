@@ -116,17 +116,10 @@ export const addEncounters = async (
       );
     }
 
-    if (!complaint?.trim()) {
-      throw new CustomError(
-        errors.missingComplaint,
-        HttpStatusCode.BAD_REQUEST,
-      );
-    }
-
     const trimmedDoctorId = doctorId.trim();
     const trimmedRegionId = regionId.trim();
     const trimmedAppointmentSlotId = appointmentSlotId.trim();
-    const trimmedComplaint = complaint.trim();
+    const trimmedComplaint = complaint?.trim() || null;
 
     const encounter = await db.transaction(async (tx) => {
       const existingEncounter = await tx.query.encounters.findFirst({
