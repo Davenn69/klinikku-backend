@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
 import { db } from "../db";
-import { appointmentSlots, encounters } from "../db/schema";
+import { appointmentSlots, doctors, encounters, regions } from "../db/schema";
 import { HttpStatusCode } from "../types/httpStatusCode";
 import { and, eq, sql } from "drizzle-orm";
 import { success } from "../utils/successMessages";
@@ -13,7 +13,10 @@ const generateBookingCode = () =>
 
 const getParamId = (id: string | string[] | undefined) => {
   if (typeof id !== "string" || !id.trim()) {
-    throw new CustomError(errors.missingEncounterId, HttpStatusCode.BAD_REQUEST);
+    throw new CustomError(
+      errors.missingEncounterId,
+      HttpStatusCode.BAD_REQUEST,
+    );
   }
 
   return id.trim();
@@ -27,8 +30,40 @@ export const getEncounters = async (
   try {
     const user = res.locals.user;
     const encounter = await db
-      .select()
+      .select({
+        id: encounters.id,
+        bookingCode: encounters.bookingCode,
+        complaint: encounters.complaint,
+        status: encounters.status,
+        createdAt: encounters.createdAt,
+        updatedAt: encounters.updatedAt,
+        appointment: {
+          id: appointmentSlots.id,
+          date: appointmentSlots.slotDate,
+          startTime: appointmentSlots.startTime,
+          endTime: appointmentSlots.endTime,
+          maxCapacity: appointmentSlots.maxCapacity,
+          bookedCount: appointmentSlots.bookedCount,
+          isAvailable: appointmentSlots.isAvailable,
+        },
+        doctor: {
+          id: doctors.id,
+          name: doctors.name,
+          specialization: doctors.specialization,
+        },
+        region: {
+          id: regions.id,
+          name: regions.name,
+          code: regions.code,
+        },
+      })
       .from(encounters)
+      .innerJoin(doctors, eq(encounters.doctorId, doctors.id))
+      .innerJoin(regions, eq(encounters.regionId, regions.id))
+      .innerJoin(
+        appointmentSlots,
+        eq(encounters.appointmentSlotId, appointmentSlots.id),
+      )
       .where(eq(encounters.userId, user.sub));
 
     res.status(HttpStatusCode.OK).json({
@@ -75,7 +110,10 @@ export const addEncounters = async (
     }
 
     if (!complaint?.trim()) {
-      throw new CustomError(errors.missingComplaint, HttpStatusCode.BAD_REQUEST);
+      throw new CustomError(
+        errors.missingComplaint,
+        HttpStatusCode.BAD_REQUEST,
+      );
     }
 
     const [encounter] = await db
@@ -89,6 +127,8 @@ export const addEncounters = async (
         complaint: complaint.trim(),
       })
       .returning();
+
+    //Add appointment minus
 
     res.status(HttpStatusCode.CREATED).json({
       message: success.successCreateEncounter,
@@ -108,20 +148,58 @@ export const getEncounterDetails = async (
     const user = res.locals.user;
     const encounterId = getParamId(req.params.id);
 
-    const encounter = await db.query.encounters.findFirst({
-      where: and(
-        eq(encounters.id, encounterId),
-        eq(encounters.userId, user.sub),
-      ),
-    });
+    const encounter = await db
+      .select({
+        id: encounters.id,
+        bookingCode: encounters.bookingCode,
+        complaint: encounters.complaint,
+        status: encounters.status,
+        cancelledReason: encounters.cancelledReason,
+        cancelledAt: encounters.cancelledAt,
+        createdAt: encounters.createdAt,
+        updatedAt: encounters.updatedAt,
+        appointment: {
+          id: appointmentSlots.id,
+          date: appointmentSlots.slotDate,
+          startTime: appointmentSlots.startTime,
+          endTime: appointmentSlots.endTime,
+          maxCapacity: appointmentSlots.maxCapacity,
+          bookedCount: appointmentSlots.bookedCount,
+          isAvailable: appointmentSlots.isAvailable,
+        },
+        doctor: {
+          id: doctors.id,
+          name: doctors.name,
+          specialization: doctors.specialization,
+        },
+        region: {
+          id: regions.id,
+          name: regions.name,
+          code: regions.code,
+        },
+      })
+      .from(encounters)
+      .innerJoin(doctors, eq(encounters.doctorId, doctors.id))
+      .innerJoin(regions, eq(encounters.regionId, regions.id))
+      .innerJoin(
+        appointmentSlots,
+        eq(encounters.appointmentSlotId, appointmentSlots.id),
+      )
+      .where(
+        and(
+          eq(encounters.id, encounterId),
+          eq(encounters.userId, user.sub),
+        ),
+      )
+      .limit(1);
 
-    if (!encounter) {
+    if (encounter.length === 0) {
       throw new CustomError(errors.encounterNotFound, HttpStatusCode.NOT_FOUND);
     }
 
     res.status(HttpStatusCode.OK).json({
       message: success.successGetEncounterDetails,
-      encounter,
+      encounter: encounter[0],
     });
   } catch (e: any) {
     next(e);
@@ -146,7 +224,10 @@ export const deleteEncounters = async (
       });
 
       if (!encounter) {
-        throw new CustomError(errors.encounterNotFound, HttpStatusCode.NOT_FOUND);
+        throw new CustomError(
+          errors.encounterNotFound,
+          HttpStatusCode.NOT_FOUND,
+        );
       }
 
       if (encounter.status === "CANCELLED") {
