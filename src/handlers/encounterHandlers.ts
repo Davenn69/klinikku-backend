@@ -271,8 +271,9 @@ export const updatedEncounter = async (
     const user = res.locals.user;
     const encounterId = getParamId(req.params.id);
 
-    const { appointment_id: appointmentId } = req.body as {
+    const { appointment_id: appointmentId, complaint } = req.body as {
       appointment_id?: string;
+      complaint?: string;
     };
     if (!appointmentId?.trim()) {
       throw new CustomError(
@@ -282,6 +283,7 @@ export const updatedEncounter = async (
     }
 
     const trimmedAppointmentId = appointmentId.trim();
+    const trimmedComplaint = complaint?.trim() || null;
 
     const encounter = await db.transaction(async (tx) => {
       const currentEncounter = await tx.query.encounters.findFirst({
@@ -372,12 +374,10 @@ export const updatedEncounter = async (
           doctorId: nextSlot.doctorId,
           regionId: nextSlot.regionId,
           updatedAt: new Date(),
+          complaint: trimmedComplaint,
         })
         .where(
-          and(
-            eq(encounters.id, encounterId),
-            eq(encounters.userId, user.sub),
-          ),
+          and(eq(encounters.id, encounterId), eq(encounters.userId, user.sub)),
         )
         .returning();
 
