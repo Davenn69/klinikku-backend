@@ -1,11 +1,51 @@
 import { Request, Response, NextFunction } from "express";
 import { db } from "../db";
-import { appointmentSlots, doctors, encounters, regions, users } from "../db/schema";
-import { eq, sql, asc } from "drizzle-orm";
+import {
+  appointmentSlots,
+  doctors,
+  encounters,
+  regions,
+  users,
+} from "../db/schema";
+import { and, asc, eq, gt, or, sql } from "drizzle-orm";
 import { HttpStatusCode } from "../types/httpStatusCode";
 import { success } from "../utils/successMessages";
 import CustomError from "../types/error";
 import { errors } from "../utils/errorMessages";
+
+const DASHBOARD_TIME_ZONE = "Asia/Bangkok";
+
+const formatDateInTimeZone = (date: Date) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DASHBOARD_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    throw new Error("Failed to format dashboard date in target time zone");
+  }
+
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeInTimeZone = (date: Date) => {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: DASHBOARD_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  return formatter.format(date);
+};
 
 export const getDashboardData = async (
   req: Request,
@@ -31,6 +71,9 @@ export const getDashboardData = async (
     if (!user) {
       throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
     }
+
+    const currentDate = formatDateInTimeZone(new Date());
+    const currentTime = formatTimeInTimeZone(new Date());
 
     const [recentBooking] = await db
       .select({
@@ -74,17 +117,25 @@ export const getDashboardData = async (
         appointmentSlots,
         eq(encounters.appointmentSlotId, appointmentSlots.id),
       )
-      .where(eq(encounters.userId, user.id))
-      .orderBy(asc(encounters.createdAt))
+      .where(
+        and(
+          eq(encounters.userId, user.id),
+          eq(encounters.status, "BOOKED"),
+          or(
+            gt(appointmentSlots.slotDate, currentDate),
+            and(
+              eq(appointmentSlots.slotDate, currentDate),
+              gt(appointmentSlots.startTime, currentTime),
+            ),
+          ),
+        ),
+      )
+      .orderBy(asc(appointmentSlots.slotDate), asc(appointmentSlots.startTime))
       .limit(1);
-
-    if (!recentBooking) {
-      throw new CustomError(errors.encounterNotFound, HttpStatusCode.NOT_FOUND);
-    }
 
     res.status(HttpStatusCode.OK).json({
       message: success.successGetEncounterDetails,
-      recentBooking: recentBooking,
+      recentBooking: recentBooking ?? null,
       user: user,
     });
   } catch (e: any) {
