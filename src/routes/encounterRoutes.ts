@@ -12,7 +12,7 @@ const route = Router();
 route.get("/", getEncounters);
 route.post("/", addEncounters);
 route.get("/:id", getEncounterDetails);
-route.patch("/:id", updatedEncounter);
+route.put("/:id", updatedEncounter);
 route.delete("/:id", deleteEncounters);
 
 export default route;
