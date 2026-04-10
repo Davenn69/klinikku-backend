@@ -4,6 +4,7 @@ import {
   deleteEncounters,
   getEncounterDetails,
   getEncounters,
+  updatedEncounter,
 } from "../handlers/encounterHandlers";
 
 const route = Router();
@@ -11,6 +12,7 @@ const route = Router();
 route.get("/", getEncounters);
 route.post("/", addEncounters);
 route.get("/:id", getEncounterDetails);
+route.put("/:id", updatedEncounter);
 route.delete("/:id", deleteEncounters);
 
 export default route;

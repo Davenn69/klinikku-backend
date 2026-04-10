@@ -27,6 +27,7 @@ class ErrorMessages {
   //Appointment related
   missingDoctorId: string = "doctor_id is required.";
   missingAppointmentDate: string = "date is required.";
+  appointmentNotFound: string = "appointment not found";
 
   //Encounters related
   missingAppointmentId: string = "appointment_slot_id is required";
@@ -34,6 +35,7 @@ class ErrorMessages {
   missingEncounterId: string = "encounter id is required";
   encounterNotFound: string = "encounter not found";
   encounterAlreadyCancelled: string = "encounter is already cancelled";
+  encounterCannotBeUpdated: string = "encounter cannot be updated";
   appointmentSlotUnavailable: string =
     "appointment slot is unavailable or fully booked";
   encounterAlreadyBooked: string =

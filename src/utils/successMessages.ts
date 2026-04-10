@@ -9,6 +9,7 @@ class SuccessMessages {
   successCreateEncounter = "Success create encounter";
   successGetEncounterDetails = "Success get encounter details";
   successCancelEncounter = "Success cancel encounter";
+  successUpdateEncounter = "Success update encounter";
 }
 
 export const success = new SuccessMessages();

@@ -63,7 +63,8 @@ export const getAppointments = async (
           //   1,
           // ),
         ),
-      );
+      )
+      .orderBy(appointmentSlots.startTime);
 
     res.status(HttpStatusCode.OK).json({
       message: success.successRetrieveAppointmentSlots,
