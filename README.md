@@ -93,7 +93,7 @@ Kalau dibandingkan dengan NoSQL:
 Buat file `.env` di root project, lalu isi minimal:
 
 ```env
-PORT=3000
+PORT=8080
 DATABASE_URL=postgresql://user:password@localhost:5432/nama_database
 JWT_SECRET=secret_yang_kuat
 ```
