@@ -24,6 +24,7 @@ const errorCodeMap = new Map<string, string>([
   [errors.missingEncounterId, "MISSING_ENCOUNTER_ID"],
   [errors.encounterNotFound, "ENCOUNTER_NOT_FOUND"],
   [errors.encounterAlreadyCancelled, "ENCOUNTER_ALREADY_CANCELLED"],
+  [errors.encounterCannotBeUpdated, "ENCOUNTER_CANNOT_BE_UPDATED"],
   [errors.appointmentSlotUnavailable, "APPOINTMENT_SLOT_UNAVAILABLE"],
   [errors.encounterAlreadyBooked, "ENCOUNTER_ALREADY_BOOKED"],
   [errors.appointmentNotFound, "APPOINTMENT_NOT_FOUND"],

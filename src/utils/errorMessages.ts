@@ -35,6 +35,7 @@ class ErrorMessages {
   missingEncounterId: string = "encounter id is required";
   encounterNotFound: string = "encounter not found";
   encounterAlreadyCancelled: string = "encounter is already cancelled";
+  encounterCannotBeUpdated: string = "encounter cannot be updated";
   appointmentSlotUnavailable: string =
     "appointment slot is unavailable or fully booked";
   encounterAlreadyBooked: string =

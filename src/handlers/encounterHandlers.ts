@@ -7,10 +7,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { success } from "../utils/successMessages";
 import CustomError from "../types/error";
 import { errors } from "../utils/errorMessages";
-import { PgColumn } from "drizzle-orm/pg-core";
 
 const generateBookingCode = () =>
   `BOOK-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+
+const RESCHEDULABLE_STATUSES = new Set(["BOOKED", "CONFIRMED"]);
 
 const getParamId = (id: string | string[] | undefined) => {
   if (typeof id !== "string" || !id.trim()) {
@@ -268,17 +269,11 @@ export const updatedEncounter = async (
 ) => {
   try {
     const user = res.locals.user;
+    const encounterId = getParamId(req.params.id);
 
-    const { encounter_id: encounterId, appointment_id: appointmentId } =
-      req.body as { encounter_id?: string; appointment_id?: string };
-
-    if (!encounterId?.trim()) {
-      throw new CustomError(
-        errors.missingEncounterId,
-        HttpStatusCode.BAD_REQUEST,
-      );
-    }
-
+    const { appointment_id: appointmentId } = req.body as {
+      appointment_id?: string;
+    };
     if (!appointmentId?.trim()) {
       throw new CustomError(
         errors.missingAppointmentId,
@@ -286,26 +281,115 @@ export const updatedEncounter = async (
       );
     }
 
-    const appointment = db
-      .select()
-      .from(appointmentSlots)
-      .where(eq(appointmentSlots.id, appointmentId));
+    const trimmedAppointmentId = appointmentId.trim();
 
-    if (!appointment)
-      throw new CustomError(
-        errors.appointmentNotFound,
-        HttpStatusCode.NOT_FOUND,
-      );
+    const encounter = await db.transaction(async (tx) => {
+      const currentEncounter = await tx.query.encounters.findFirst({
+        where: and(
+          eq(encounters.id, encounterId),
+          eq(encounters.userId, user.sub),
+        ),
+      });
 
-    const encounter = await db
-      .update(encounters)
-      .set({
-        appointmentSlotId: appointmentId,
-      })
-      .where(
-        and(eq(encounters.id, encounterId), eq(encounters.userId, user.sub)),
-      )
-      .returning();
+      if (!currentEncounter) {
+        throw new CustomError(
+          errors.encounterNotFound,
+          HttpStatusCode.NOT_FOUND,
+        );
+      }
+
+      if (!RESCHEDULABLE_STATUSES.has(currentEncounter.status)) {
+        throw new CustomError(
+          errors.encounterCannotBeUpdated,
+          HttpStatusCode.CONFLICT,
+        );
+      }
+
+      if (currentEncounter.appointmentSlotId === trimmedAppointmentId) {
+        return currentEncounter;
+      }
+
+      const currentSlot = await tx.query.appointmentSlots.findFirst({
+        columns: {
+          id: true,
+          bookedCount: true,
+          maxCapacity: true,
+          isAvailable: true,
+        },
+        where: eq(appointmentSlots.id, currentEncounter.appointmentSlotId),
+      });
+
+      if (!currentSlot) {
+        throw new CustomError(
+          errors.appointmentNotFound,
+          HttpStatusCode.NOT_FOUND,
+        );
+      }
+
+      const nextSlot = await tx.query.appointmentSlots.findFirst({
+        columns: {
+          id: true,
+          doctorId: true,
+          regionId: true,
+          bookedCount: true,
+          maxCapacity: true,
+          isAvailable: true,
+        },
+        where: eq(appointmentSlots.id, trimmedAppointmentId),
+      });
+
+      if (
+        !nextSlot ||
+        !nextSlot.isAvailable ||
+        nextSlot.bookedCount >= nextSlot.maxCapacity
+      ) {
+        throw new CustomError(
+          errors.appointmentSlotUnavailable,
+          HttpStatusCode.CONFLICT,
+        );
+      }
+
+      await tx
+        .update(appointmentSlots)
+        .set({
+          bookedCount: Math.max(currentSlot.bookedCount - 1, 0),
+          isAvailable: currentSlot.bookedCount - 1 < currentSlot.maxCapacity,
+        })
+        .where(eq(appointmentSlots.id, currentEncounter.appointmentSlotId));
+
+      await tx
+        .update(appointmentSlots)
+        .set({
+          bookedCount: nextSlot.bookedCount + 1,
+          isAvailable: nextSlot.bookedCount + 1 < nextSlot.maxCapacity,
+        })
+        .where(eq(appointmentSlots.id, trimmedAppointmentId));
+
+      const [updatedEncounter] = await tx
+        .update(encounters)
+        .set({
+          appointmentSlotId: trimmedAppointmentId,
+          doctorId: nextSlot.doctorId,
+          regionId: nextSlot.regionId,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(encounters.id, encounterId),
+            eq(encounters.userId, user.sub),
+          ),
+        )
+        .returning();
+
+      if (!updatedEncounter) {
+        throw new CustomError(
+          errors.encounterNotFound,
+          HttpStatusCode.NOT_FOUND,
+        );
+      }
+
+      return updatedEncounter;
+    });
 
     res.status(HttpStatusCode.OK).json({
       message: success.successUpdateEncounter,
