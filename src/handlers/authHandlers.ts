@@ -1,12 +1,23 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import { db } from "../db";
-import { users } from "../db/schema";
+import { refreshTokens, users } from "../db/schema";
 import CustomError from "../types/error";
-import { hashPassword, signAccessToken, verifyPassword } from "../utils/auth";
+import {
+  generateRefreshToken,
+  getRefreshTokenExpiryDate,
+  hashPassword,
+  hashRefreshToken,
+  signAccessToken,
+  verifyPassword,
+} from "../utils/auth";
 import { errors } from "../utils/errorMessages";
 import { HttpStatusCode } from "../types/httpStatusCode";
 import { success } from "../utils/successMessages";
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+const emailRegex = /^[\w-\.]+@[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+$/;
+const nameRegex = /^[A-Za-z\s]+$/;
 
 const getSafeUser = (user: typeof users.$inferSelect) => ({
   id: user.id,
@@ -17,6 +28,23 @@ const getSafeUser = (user: typeof users.$inferSelect) => ({
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
+
+const issueSessionTokens = async (user: typeof users.$inferSelect) => {
+  const accessToken = signAccessToken({
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+  });
+  const refreshToken = generateRefreshToken();
+
+  await db.insert(refreshTokens).values({
+    userId: user.id,
+    tokenHash: hashRefreshToken(refreshToken),
+    expiresAt: getRefreshTokenExpiryDate(),
+  });
+
+  return { accessToken, refreshToken };
+};
 
 export const register = async (
   req: Request,
@@ -38,11 +66,41 @@ export const register = async (
       );
     }
 
-    if (password.length < 8) {
+    if (name.trim().length < 2) {
+      throw new CustomError(
+        errors.invalidNameLength,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (password.length < 6) {
       throw new CustomError(errors.passwordLength, HttpStatusCode.BAD_REQUEST);
     }
 
+    const trimmedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
+
+    if (!nameRegex.test(trimmedName)) {
+      throw new CustomError(
+        errors.invalidNameFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (!emailRegex.test(normalizedEmail)) {
+      throw new CustomError(
+        errors.invalidEmailFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (!passwordRegex.test(password)) {
+      throw new CustomError(
+        errors.invalidPasswordFormat,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, normalizedEmail),
     });
@@ -54,7 +112,7 @@ export const register = async (
     const [newUser] = await db
       .insert(users)
       .values({
-        name: name.trim(),
+        name: trimmedName,
         email: normalizedEmail,
         passwordHash: await hashPassword(password),
         role: role ?? "patient",
@@ -68,16 +126,13 @@ export const register = async (
       );
     }
 
-    const accessToken = signAccessToken({
-      sub: newUser.id,
-      email: newUser.email,
-      role: newUser.role,
-    });
+    const { accessToken, refreshToken } = await issueSessionTokens(newUser);
 
     res.status(HttpStatusCode.OK).json({
       message: success.successRegister,
       user: getSafeUser(newUser),
       accessToken,
+      refreshToken,
     });
   } catch (error) {
     next(error);
@@ -103,6 +158,7 @@ export const login = async (
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+
     const user = await db.query.users.findFirst({
       where: eq(users.email, normalizedEmail),
     });
@@ -118,16 +174,83 @@ export const login = async (
       throw new CustomError(errors.accountInactive, HttpStatusCode.FORBIDDEN);
     }
 
+    const { accessToken, refreshToken } = await issueSessionTokens(user);
+
+    res.status(HttpStatusCode.OK).json({
+      message: success.successLogin,
+      user: getSafeUser(user),
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refresh = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { refreshToken } = req.body as {
+      refreshToken?: string;
+    };
+
+    if (!refreshToken?.trim()) {
+      throw new CustomError(
+        errors.refreshTokenMissing,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    const hashedRefreshToken = hashRefreshToken(refreshToken.trim());
+    const now = new Date();
+    const storedRefreshToken = await db.query.refreshTokens.findFirst({
+      where: and(
+        eq(refreshTokens.tokenHash, hashedRefreshToken),
+        eq(refreshTokens.revoked, false),
+        gt(refreshTokens.expiresAt, now),
+      ),
+    });
+
+    if (!storedRefreshToken) {
+      throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, storedRefreshToken.userId),
+    });
+
+    if (!user || !user.isActive) {
+      throw new CustomError(errors.invalidToken, HttpStatusCode.UNAUTHORIZED);
+    }
+
+    const nextRefreshToken = generateRefreshToken();
     const accessToken = signAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role,
     });
 
+    await db.transaction(async (tx) => {
+      await tx
+        .update(refreshTokens)
+        .set({ revoked: true })
+        .where(eq(refreshTokens.id, storedRefreshToken.id));
+
+      await tx.insert(refreshTokens).values({
+        userId: user.id,
+        tokenHash: hashRefreshToken(nextRefreshToken),
+        expiresAt: getRefreshTokenExpiryDate(),
+      });
+    });
+
     res.status(HttpStatusCode.OK).json({
-      message: success.successLogin,
+      message: success.successRefreshSession,
       user: getSafeUser(user),
       accessToken,
+      refreshToken: nextRefreshToken,
     });
   } catch (error) {
     next(error);

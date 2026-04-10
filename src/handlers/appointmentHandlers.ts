@@ -24,17 +24,11 @@ export const getAppointments = async (
     };
 
     if (!regionId?.trim()) {
-      throw new CustomError(
-        errors.missingRegionId,
-        HttpStatusCode.BAD_REQUEST,
-      );
+      throw new CustomError(errors.missingRegionId, HttpStatusCode.BAD_REQUEST);
     }
 
     if (!doctorId?.trim()) {
-      throw new CustomError(
-        errors.missingDoctorId,
-        HttpStatusCode.BAD_REQUEST,
-      );
+      throw new CustomError(errors.missingDoctorId, HttpStatusCode.BAD_REQUEST);
     }
 
     if (!date?.trim()) {
@@ -55,8 +49,7 @@ export const getAppointments = async (
         maxCapacity: appointmentSlots.maxCapacity,
         bookedCount: appointmentSlots.bookedCount,
         isAvailable: appointmentSlots.isAvailable,
-        remainingCapacity:
-          sql<number>`${appointmentSlots.maxCapacity} - ${appointmentSlots.bookedCount}`,
+        remainingCapacity: sql<number>`${appointmentSlots.maxCapacity} - ${appointmentSlots.bookedCount}`,
       })
       .from(appointmentSlots)
       .where(
@@ -64,11 +57,11 @@ export const getAppointments = async (
           eq(appointmentSlots.regionId, regionId.trim()),
           eq(appointmentSlots.doctorId, doctorId.trim()),
           eq(appointmentSlots.slotDate, date.trim()),
-          eq(appointmentSlots.isAvailable, true),
-          gte(
-            sql<number>`${appointmentSlots.maxCapacity} - ${appointmentSlots.bookedCount}`,
-            1,
-          ),
+          // eq(appointmentSlots.isAvailable, true),
+          // gte(
+          //   sql<number>`${appointmentSlots.maxCapacity} - ${appointmentSlots.bookedCount}`,
+          //   1,
+          // ),
         ),
       );
 
