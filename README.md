@@ -2,6 +2,10 @@
 
 Backend ini adalah REST API berbasis **Node.js + Express + TypeScript** dengan **PostgreSQL** dan **Drizzle ORM**. Project ini menangani autentikasi, data wilayah, dokter, slot janji temu, encounter, dan dashboard.
 
+# Link Postman Documentation
+
+https://solar-satellite-704249.postman.co/workspace/Klinikku~c495fe7f-0892-4dc1-9dbb-80378d15ddc3/collection/47298475-89281a86-a8c8-4655-a129-caf6937a2f8d?action=share&creator=47298475
+
 ## Arsitektur
 
 Project ini menggunakan **controller-based API architecture**. Artinya, aplikasi dibangun dengan alur request yang jelas: route menerima endpoint, controller/handler memproses logika request, lalu database diakses untuk mengambil atau menyimpan data.
@@ -111,7 +115,6 @@ npm install
 2. Siapkan database PostgreSQL dan pastikan `DATABASE_URL` sudah benar.
 
 3. Jalankan migration database:
-
    - Import file SQL berikut ke database secara berurutan:
      - `drizzle/0000_foamy_mojo.sql`
      - `drizzle/0001_triggers.sql`
