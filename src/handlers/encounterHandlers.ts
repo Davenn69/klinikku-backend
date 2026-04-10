@@ -261,6 +261,61 @@ export const getEncounterDetails = async (
   }
 };
 
+export const updatedEncounter = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const user = res.locals.user;
+
+    const { encounter_id: encounterId, appointment_id: appointmentId } =
+      req.body as { encounter_id?: string; appointment_id?: string };
+
+    if (!encounterId?.trim()) {
+      throw new CustomError(
+        errors.missingEncounterId,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    if (!appointmentId?.trim()) {
+      throw new CustomError(
+        errors.missingAppointmentId,
+        HttpStatusCode.BAD_REQUEST,
+      );
+    }
+
+    const appointment = db
+      .select()
+      .from(appointmentSlots)
+      .where(eq(appointmentSlots.id, appointmentId));
+
+    if (!appointment)
+      throw new CustomError(
+        errors.appointmentNotFound,
+        HttpStatusCode.NOT_FOUND,
+      );
+
+    const encounter = await db
+      .update(encounters)
+      .set({
+        appointmentSlotId: appointmentId,
+      })
+      .where(
+        and(eq(encounters.id, encounterId), eq(encounters.userId, user.sub)),
+      )
+      .returning();
+
+    res.status(HttpStatusCode.OK).json({
+      message: success.successUpdateEncounter,
+      encounter,
+    });
+  } catch (e: any) {
+    next(e);
+  }
+};
+
 export const deleteEncounters = async (
   req: Request,
   res: Response,

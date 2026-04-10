@@ -27,6 +27,7 @@ class ErrorMessages {
   //Appointment related
   missingDoctorId: string = "doctor_id is required.";
   missingAppointmentDate: string = "date is required.";
+  appointmentNotFound: string = "appointment not found";
 
   //Encounters related
   missingAppointmentId: string = "appointment_slot_id is required";

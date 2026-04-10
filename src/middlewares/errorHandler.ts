@@ -26,6 +26,7 @@ const errorCodeMap = new Map<string, string>([
   [errors.encounterAlreadyCancelled, "ENCOUNTER_ALREADY_CANCELLED"],
   [errors.appointmentSlotUnavailable, "APPOINTMENT_SLOT_UNAVAILABLE"],
   [errors.encounterAlreadyBooked, "ENCOUNTER_ALREADY_BOOKED"],
+  [errors.appointmentNotFound, "APPOINTMENT_NOT_FOUND"],
 ]);
 
 const getCorrelationId = (req: Request) => {
