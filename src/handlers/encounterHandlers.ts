@@ -7,6 +7,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { success } from "../utils/successMessages";
 import CustomError from "../types/error";
 import { errors } from "../utils/errorMessages";
+import { PgColumn } from "drizzle-orm/pg-core";
 
 const generateBookingCode = () =>
   `BOOK-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
@@ -29,6 +30,15 @@ export const getEncounters = async (
 ) => {
   try {
     const user = res.locals.user;
+
+    const { region_id: regionId } = req.query as { region_id?: string };
+
+    const conditions = [eq(encounters.userId, user.sub)];
+
+    if (regionId?.trim()) {
+      conditions.push(eq(encounters.regionId, regionId!));
+    }
+
     const encounter = await db
       .select({
         id: encounters.id,
@@ -71,7 +81,7 @@ export const getEncounters = async (
         appointmentSlots,
         eq(encounters.appointmentSlotId, appointmentSlots.id),
       )
-      .where(eq(encounters.userId, user.sub));
+      .where(and(...conditions));
 
     res.status(HttpStatusCode.OK).json({
       message: success.successGetEncounters,
